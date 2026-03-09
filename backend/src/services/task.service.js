@@ -1,9 +1,18 @@
-
-
 const Task = require("../models/task.model");
+const agenda = require("../config/agenda");
 
-exports.create = (data, userId) =>
-  Task.create({ ...data, user: userId });
+exports.create = async (data, userId) => {
+  const task = await Task.create({ ...data, user: userId });
+
+  if (task.dueDate) {
+    const job = await agenda.schedule(task.dueDate, "notify-overdue-task", {
+      taskId: task._id,
+    });
+    await Task.findByIdAndUpdate(task._id, { jobId: job.attrs._id });
+  }
+
+  return task;
+};
 
 exports.getAll = async (query, userId) => {
   const {
@@ -55,15 +64,15 @@ exports.getAll = async (query, userId) => {
 };
 
 exports.update = async (taskId, data, userId) => {
-  const task = await Task.findOneAndUpdate(
-    { _id: taskId, user: userId },
-    data,
-    { new: true }
-  );
-
+  const task = await Task.findOne({ _id: taskId, user: userId });
   if (!task) throw new Error("Task not found");
 
-  return task;
+  // Task completed before deadline — cancel the scheduled notification
+  if (data.completed === true && task.jobId) {
+    await agenda.cancel({ _id: task.jobId });
+  }
+
+  return Task.findByIdAndUpdate(taskId, data, { new: true });
 };
 
 exports.remove = async (taskId, userId) => {
@@ -73,6 +82,11 @@ exports.remove = async (taskId, userId) => {
   });
 
   if (!task) throw new Error("Task not found");
+
+  // Cancel scheduled notification if task is deleted
+  if (task.jobId) {
+    await agenda.cancel({ _id: task.jobId });
+  }
 
   return task;
 };

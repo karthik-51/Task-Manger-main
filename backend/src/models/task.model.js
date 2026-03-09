@@ -34,6 +34,10 @@ module.exports = mongoose.model(
         ref: "User",
         required: true,
       },
+
+      jobId: {
+        type: mongoose.Schema.Types.ObjectId,
+      },
     },
     { timestamps: true }
   )
