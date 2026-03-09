@@ -16,7 +16,7 @@ connectDB(); // no parameter needed
 
 app.listen(process.env.PORT || 5000, () =>
   console.log(`Server running on port ${process.env.PORT || 5000}`)
- );  
+);  
 // require("dotenv").config();
 // console.log("MONGO_URI =", process.env.MONGO_URI);
 
