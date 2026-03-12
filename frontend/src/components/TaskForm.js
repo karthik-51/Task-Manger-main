@@ -103,7 +103,6 @@ export default function TaskForm({ refresh, editTask, setEditTask }) {
   }, [editTask]);
 
   const submit = async (e) => {
-
     e.preventDefault();
 
     const data = {
@@ -114,16 +113,12 @@ export default function TaskForm({ refresh, editTask, setEditTask }) {
       dueDate
     };
 
+
     if (editTask) {
-
       await axios.put(`/tasks/${editTask._id}`, data);
-
       setEditTask(null);
-
     } else {
-
       await axios.post("/tasks", data);
-
     }
 
     setTitle("");
