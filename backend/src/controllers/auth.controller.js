@@ -30,3 +30,15 @@ exports.login = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.refresh = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) return res.status(401).json({ message: "No refresh token" });
+
+    const tokens = await authService.refresh(refreshToken);
+    res.json(tokens);
+  } catch (err) {
+    res.status(401).json({ message: "Invalid or expired refresh token" });
+  }
+};
