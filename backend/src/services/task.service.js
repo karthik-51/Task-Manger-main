@@ -81,6 +81,16 @@ exports.update = async (taskId, data, userId) => {
     logger.info("Task service: cancelled job due to early completion", { taskId, jobId: task.jobId });
   }
 
+  if (data.dueDate && task.jobId) {
+    await agenda.cancel({ _id: task.jobId });
+    const job = await agenda.schedule(
+      new Date(data.dueDate),
+      "notify-overdue-task",
+      { taskId: task._id },
+    );
+    data.jobId = job.attrs._id;
+  }
+
   return Task.findByIdAndUpdate(taskId, data, { new: true });
 };
 
