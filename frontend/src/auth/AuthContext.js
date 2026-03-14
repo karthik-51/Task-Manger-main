@@ -13,6 +13,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const res = await axios.post("/auth/login", { email, password });
     localStorage.setItem("accessToken", res.data.accessToken);
+    localStorage.setItem("refreshToken", res.data.refreshToken);
     setUser(res.data.accessToken);
     navigate("/dashboard");
   };
@@ -24,6 +25,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     setUser(null);
     navigate("/");
   };

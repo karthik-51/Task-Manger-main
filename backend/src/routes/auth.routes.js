@@ -8,5 +8,6 @@ const {
 
 router.post("/register", validate(registerSchema), controller.register);
 router.post("/login", validate(loginSchema), controller.login);
+router.post("/refresh", controller.refresh);
 
 module.exports = router;
