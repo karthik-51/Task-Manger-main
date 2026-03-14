@@ -76,26 +76,6 @@ function buildMatrix(matrixData) {
   }));
 }
 
-function buildPriorityDonuts(matrixData) {
-  const map = {};
-  matrixData.forEach(({ _id, count }) => {
-    if (!map[_id.priority]) map[_id.priority] = { pending: 0, completed: 0 };
-    if (_id.status === "completed") map[_id.priority].completed += count;
-    else map[_id.priority].pending += count;
-  });
-  return {
-    pending: {
-      high: map.high?.pending || 0,
-      medium: map.medium?.pending || 0,
-      low: map.low?.pending || 0,
-    },
-    completed: {
-      high: map.high?.completed || 0,
-      medium: map.medium?.completed || 0,
-      low: map.low?.completed || 0,
-    },
-  };
-}
 
 // ── sub-components ───────────────────────────────────────────────
 
@@ -419,7 +399,6 @@ export default function Analytics() {
   const total =
     statusCounts.todo + statusCounts.inprogress + statusCounts.completed;
 
-  const priorityDonuts = buildPriorityDonuts(matrix);
   const matrixRows = buildMatrix(matrix);
   // Always build the full 30-day window; slice client-side per selection
   const dailyCreatedFull = buildDailyData(dailyCreated, 30);
@@ -448,43 +427,55 @@ export default function Analytics() {
     ],
   };
 
-  const pendingPriorityData = {
+  // Stacked bar: each priority × status
+  const stackedPriorityData = {
     labels: ["High", "Medium", "Low"],
     datasets: [
       {
-        data: [
-          priorityDonuts.pending.high,
-          priorityDonuts.pending.medium,
-          priorityDonuts.pending.low,
-        ],
-        backgroundColor: [
-          CHART_COLORS.high,
-          CHART_COLORS.medium,
-          CHART_COLORS.low,
-        ],
-        borderWidth: 0,
+        label: "To Do",
+        data: matrixRows.map((r) => r.todo),
+        backgroundColor: CHART_COLORS.todo,
+        borderRadius: 3,
+      },
+      {
+        label: "In Progress",
+        data: matrixRows.map((r) => r.inprogress),
+        backgroundColor: CHART_COLORS.inprogress,
+        borderRadius: 3,
+      },
+      {
+        label: "Completed",
+        data: matrixRows.map((r) => r.completed),
+        backgroundColor: CHART_COLORS.completed,
+        borderRadius: 3,
       },
     ],
   };
 
-  const completedPriorityData = {
-    labels: ["High", "Medium", "Low"],
-    datasets: [
-      {
-        data: [
-          priorityDonuts.completed.high,
-          priorityDonuts.completed.medium,
-          priorityDonuts.completed.low,
-        ],
-        backgroundColor: [
-          CHART_COLORS.high,
-          CHART_COLORS.medium,
-          CHART_COLORS.low,
-        ],
-        borderWidth: 0,
+  const stackedPriorityOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "bottom",
+        labels: { boxWidth: 10, font: { size: 10 }, padding: 10 },
       },
-    ],
+    },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        ticks: { stepSize: 1, font: { size: 10 } },
+        grid: { color: "#F3F4F6" },
+      },
+    },
   };
+
+  // Per-day completion rate for wave tooltip
+  const dailyRateData = dailyCreatedData.map((d, i) =>
+    d.count > 0 ? Math.round((dailyCompletedData[i].count / d.count) * 100) : null
+  );
 
   // Combo chart: bars for Created, line for Completed
   const productivityChartData = {
@@ -502,11 +493,14 @@ export default function Analytics() {
         type: "line",
         label: "Completed",
         data: dailyCompletedData.map((d) => d.count),
-        borderColor: "#10B981",
+        borderColor: "#F97316",
         backgroundColor: "transparent",
         tension: 0.4,
-        pointRadius: 3,
-        pointHoverRadius: 5,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: "#F97316",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 1.5,
         borderWidth: 2.5,
         order: 1,
       },
@@ -541,6 +535,17 @@ export default function Analytics() {
       legend: {
         position: "top",
         labels: { boxWidth: 10, font: { size: 10 }, padding: 10 },
+      },
+      tooltip: {
+        callbacks: {
+          footer: (items) => {
+            const idx = items[0]?.dataIndex;
+            const rate = dailyRateData[idx];
+            return rate !== null && rate !== undefined
+              ? `Completion rate: ${rate}%`
+              : "";
+          },
+        },
       },
     },
     scales: {
@@ -585,68 +590,6 @@ export default function Analytics() {
         grid: { color: "#F3F4F6" },
       },
       y: { ticks: { font: { size: 10 } }, grid: { display: false } },
-    },
-  };
-
-  // ── Completion Rate Trend (cumulative, no extra API call) ─────
-  let cumCreated = 0, cumCompleted = 0;
-  const completionRatePoints = dailyCreatedFull.map((d, i) => {
-    cumCreated  += d.count;
-    cumCompleted += dailyCompletedFull[i].count;
-    return cumCreated > 0 ? Math.round((cumCompleted / cumCreated) * 100) : null;
-  });
-  const hasRateData = completionRatePoints.some((v) => v !== null && v > 0);
-
-  const completionRateChartData = {
-    labels: dailyCreatedFull.map((d) => d.label),
-    datasets: [
-      {
-        label: "Completion %",
-        data: completionRatePoints,
-        borderColor: "#10B981",
-        backgroundColor: "rgba(16,185,129,0.08)",
-        fill: true,
-        tension: 0.3,
-        pointRadius: 2,
-        pointHoverRadius: 4,
-        spanGaps: true,
-      },
-      {
-        label: "50% target",
-        data: Array(dailyCreatedFull.length).fill(50),
-        borderColor: "rgba(156,163,175,0.45)",
-        borderDash: [5, 5],
-        pointRadius: 0,
-        borderWidth: 1.5,
-      },
-    ],
-  };
-
-  const completionRateOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "top",
-        labels: {
-          boxWidth: 10,
-          font: { size: 10 },
-          padding: 8,
-          filter: (item) => item.text !== "50% target",
-        },
-      },
-    },
-    scales: {
-      y: {
-        min: 0,
-        max: 100,
-        ticks: { callback: (v) => v + "%", font: { size: 10 } },
-        grid: { color: "#F3F4F6" },
-      },
-      x: {
-        ticks: { maxTicksLimit: 8, font: { size: 9 } },
-        grid: { display: false },
-      },
     },
   };
 
@@ -750,70 +693,44 @@ export default function Analytics() {
           </div>
         </div>
 
-        {/* ROW 2 — Priority Distribution | Status × Priority Matrix */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+        {/* ROW 2 — Priority Distribution | Task Age Distribution | Status × Priority Matrix */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
 
-          {/* Priority Distribution */}
+          {/* Priority Distribution — stacked bar */}
           <div
             className="bg-white rounded-xl shadow-sm border border-gray-100 p-5
               hover:shadow-md transition-shadow duration-200"
             style={{ borderTopColor: "#F59E0B", borderTopWidth: "3px" }}
           >
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
               Priority Distribution
             </h3>
-            {(priorityDonuts.pending.high + priorityDonuts.pending.medium + priorityDonuts.pending.low +
-              priorityDonuts.completed.high + priorityDonuts.completed.medium + priorityDonuts.completed.low) === 0 ? (
+            <p className="text-xs text-gray-300 mb-3">Tasks by priority × status</p>
+            {total === 0 ? (
               <EmptyState icon="🏷️" message="No tasks with priority set" />
             ) : (
-            <div className="flex items-center justify-around">
-              {/* Pending donut */}
-              <div className="flex flex-col items-center gap-1.5">
-                <div className="relative" style={{ width: 110, height: 110 }}>
-                  <Doughnut data={pendingPriorityData} options={donutOptions} />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span className="text-sm font-bold text-gray-700">
-                      {priorityDonuts.pending.high +
-                        priorityDonuts.pending.medium +
-                        priorityDonuts.pending.low}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-400 font-medium">Pending</p>
+              <div style={{ height: 170 }}>
+                <MixedChart type="bar" data={stackedPriorityData} options={stackedPriorityOptions} />
               </div>
+            )}
+          </div>
 
-              {/* Legend */}
-              <div className="flex flex-col gap-2.5 text-xs text-gray-500">
-                {[
-                  { label: "High", color: CHART_COLORS.high },
-                  { label: "Medium", color: CHART_COLORS.medium },
-                  { label: "Low", color: CHART_COLORS.low },
-                ].map(({ label, color }) => (
-                  <span key={label} className="flex items-center gap-1.5">
-                    <span
-                      className="w-3 h-3 rounded-full inline-block"
-                      style={{ backgroundColor: color }}
-                    />
-                    {label}
-                  </span>
-                ))}
+          {/* Task Age Distribution */}
+          <div
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-5
+              hover:shadow-md transition-shadow duration-200"
+            style={{ borderTopColor: "#F97316", borderTopWidth: "3px" }}
+          >
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
+              Task Age Distribution
+            </h3>
+            <p className="text-xs text-gray-300 mb-3">Open tasks by age</p>
+            {openTaskCount === 0 ? (
+              <EmptyState icon="🕐" message="No open tasks" />
+            ) : (
+              <div style={{ height: 170 }}>
+                <MixedChart type="bar" data={ageChartData} options={ageOptions} />
               </div>
-
-              {/* Completed donut */}
-              <div className="flex flex-col items-center gap-1.5">
-                <div className="relative" style={{ width: 110, height: 110 }}>
-                  <Doughnut data={completedPriorityData} options={donutOptions} />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span className="text-sm font-bold text-gray-700">
-                      {priorityDonuts.completed.high +
-                        priorityDonuts.completed.medium +
-                        priorityDonuts.completed.low}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-400 font-medium">Completed</p>
-              </div>
-            </div>
             )}
           </div>
 
@@ -903,51 +820,6 @@ export default function Analytics() {
           </div>
         </div>
 
-        {/* ROW 4 — Task Age Distribution | Completion Rate Trend */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
-
-          {/* Task Age Distribution */}
-          <div
-            className="bg-white rounded-xl shadow-sm border border-gray-100 p-5
-              hover:shadow-md transition-shadow duration-200"
-            style={{ borderTopColor: "#F97316", borderTopWidth: "3px" }}
-          >
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
-              Task Age Distribution
-            </h3>
-            <p className="text-xs text-gray-300 mb-3">Open tasks by age</p>
-            {openTaskCount === 0 ? (
-              <EmptyState icon="🕐" message="No open tasks" />
-            ) : (
-              <div style={{ height: 160 }}>
-                <MixedChart type="bar" data={ageChartData} options={ageOptions} />
-              </div>
-            )}
-          </div>
-
-          {/* Completion Rate Trend */}
-          <div
-            className="bg-white rounded-xl shadow-sm border border-gray-100 p-5
-              hover:shadow-md transition-shadow duration-200"
-            style={{ borderTopColor: "#10B981", borderTopWidth: "3px" }}
-          >
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
-              Completion Rate Trend
-            </h3>
-            <p className="text-xs text-gray-300 mb-3">Cumulative % over last 30 days</p>
-            {!hasRateData ? (
-              <EmptyState icon="📈" message="Complete some tasks to see trend" />
-            ) : (
-              <div style={{ height: 160 }}>
-                <MixedChart
-                  type="line"
-                  data={completionRateChartData}
-                  options={completionRateOptions}
-                />
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </>
   );
