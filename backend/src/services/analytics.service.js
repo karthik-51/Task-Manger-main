@@ -120,6 +120,36 @@ exports.getAnalytics = async (userId) => {
     { $sort: { _id: 1 } },
   ]);
 
+  // 10. Task age distribution — buckets for open tasks by how old they are
+  const oneDayAgo    = new Date(now.getTime() - 1  * 24 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(now.getTime() - 7  * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo2 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const ageAgg = await Task.aggregate([
+    { $match: { user: userObjId, status: { $ne: "completed" } } },
+    {
+      $addFields: {
+        ageBucket: {
+          $switch: {
+            branches: [
+              { case: { $gte: ["$createdAt", oneDayAgo] },    then: "< 1 day"   },
+              { case: { $gte: ["$createdAt", sevenDaysAgo] }, then: "1-7 days"  },
+              { case: { $gte: ["$createdAt", thirtyDaysAgo2] }, then: "7-30 days" },
+            ],
+            default: "30+ days",
+          },
+        },
+      },
+    },
+    { $group: { _id: "$ageBucket", count: { $sum: 1 } } },
+  ]);
+
+  const AGE_BUCKETS = ["< 1 day", "1-7 days", "7-30 days", "30+ days"];
+  const ageDistribution = AGE_BUCKETS.map((bucket) => ({
+    bucket,
+    count: (ageAgg.find((a) => a._id === bucket) || { count: 0 }).count,
+  }));
+
   logger.info("Analytics service: computed analytics", { userId });
 
   return {
@@ -132,5 +162,6 @@ exports.getAnalytics = async (userId) => {
     dailyCreated,
     dailyCompleted,
     deadlines,
+    ageDistribution,
   };
 };
