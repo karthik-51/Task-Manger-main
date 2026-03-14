@@ -98,7 +98,13 @@ export default function TaskForm({ refresh, editTask, setEditTask }) {
       setDescription(editTask.description || "");
       setPriority(editTask.priority || "medium");
       setStatus(editTask.status || "todo");
-      setDueDate(editTask.dueDate?.substring(0,10) || "");
+      if (editTask.dueDate) {
+        const d = new Date(editTask.dueDate);
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+        setDueDate(local.toISOString().substring(0, 16));
+      } else {
+        setDueDate("");
+      }
     }
   }, [editTask]);
 
@@ -110,7 +116,7 @@ export default function TaskForm({ refresh, editTask, setEditTask }) {
       description,
       priority,
       status,
-      dueDate
+      ...(dueDate && { dueDate: new Date(dueDate).toISOString() }),
     };
 
 
@@ -174,7 +180,7 @@ export default function TaskForm({ refresh, editTask, setEditTask }) {
         </select>
 
         <input
-          type="date"
+          type="datetime-local"
           value={dueDate}
           onChange={(e)=>setDueDate(e.target.value)}
           className="border p-2 rounded"
