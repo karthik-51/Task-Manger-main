@@ -3,7 +3,7 @@ const User = require("../models/user.model");
 const logger = require("../config/logger");
 
 const generateAccess = (user) =>
-  jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: process.env.ACCESS_EXPIRE });
+  jwt.sign({ id: user._id, role: user.role, name: user.name }, process.env.JWT_SECRET, { expiresIn: process.env.ACCESS_EXPIRE });
 
 const generateRefresh = (user) =>
   jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.REFRESH_EXPIRE });
