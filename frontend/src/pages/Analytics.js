@@ -164,7 +164,7 @@ function EmptyState({ icon = "📋", message = "No data yet" }) {
   );
 }
 
-function StatCard({ icon, label, numeric = 0, decimals = 0, suffix = "", borderColor }) {
+function StatCard({ icon, label, numeric = 0, decimals = 0, suffix = "", borderColor, emptyText }) {
   return (
     <div
       className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100
@@ -182,9 +182,15 @@ function StatCard({ icon, label, numeric = 0, decimals = 0, suffix = "", borderC
           {label}
         </p>
         <p className="text-lg font-bold text-gray-800 leading-tight">
-          <AnimatedNumber to={numeric} decimals={decimals} />
-          {suffix && (
-            <span className="text-sm font-normal text-gray-500">{suffix}</span>
+          {emptyText != null ? (
+            <span className="text-gray-400 font-medium">{emptyText}</span>
+          ) : (
+            <>
+              <AnimatedNumber to={numeric} decimals={decimals} />
+              {suffix && (
+                <span className="text-sm font-normal text-gray-500">{suffix}</span>
+              )}
+            </>
           )}
         </p>
       </div>
@@ -273,14 +279,19 @@ function DeadlineCalendar({ deadlines }) {
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    cells.push({ day: d, count: map[key] || 0, isToday: d === today.getDate() });
+    cells.push({
+      day: d,
+      count: map[key] || 0,
+      isToday: d === today.getDate(),
+      isPast: d < today.getDate(),
+    });
   }
 
-  const heatStyle = (count) => {
+  const heatStyle = (count, isPast = false) => {
     if (count >= 5) return "bg-red-500 text-white";
     if (count >= 3) return "bg-orange-400 text-white";
     if (count >= 1) return "bg-amber-300 text-amber-900";
-    return "bg-gray-50 text-gray-500";
+    return isPast ? "bg-gray-100 text-gray-300" : "bg-gray-50 text-gray-500";
   };
 
   const monthName = today.toLocaleString("default", {
@@ -305,9 +316,14 @@ function DeadlineCalendar({ deadlines }) {
           <div
             key={i}
             className={`relative h-7 rounded flex items-center justify-center text-xs group cursor-default
-              ${!cell ? "" : heatStyle(cell.count)}
+              ${!cell ? "" : heatStyle(cell.count, cell.isPast)}
               ${cell?.isToday ? "ring-2 ring-blue-500 font-bold" : ""}
             `}
+            style={
+              cell?.isPast && !cell?.isToday && cell?.count > 0
+                ? { boxShadow: "inset 0 0 0 1.5px rgba(255,255,255,0.75)" }
+                : undefined
+            }
           >
             {cell && (
               <>
@@ -685,10 +701,11 @@ export default function Analytics() {
             <StatCard
               icon="⏱"
               label="Avg. Lead Time"
-              numeric={avgLeadTime}
+              numeric={avgLeadTime ?? 0}
               decimals={1}
               suffix=" days"
               borderColor="#10B981"
+              emptyText={avgLeadTime == null ? "N/A" : null}
             />
           </div>
         </div>
@@ -816,6 +833,13 @@ export default function Analytics() {
                   {label}
                 </span>
               ))}
+              <span className="flex items-center gap-1">
+                <span
+                  className="w-2.5 h-2.5 rounded-sm inline-block bg-amber-300"
+                  style={{ boxShadow: "inset 0 0 0 1.5px rgba(255,255,255,0.75)" }}
+                />
+                overdue
+              </span>
             </div>
           </div>
         </div>

@@ -69,8 +69,8 @@ exports.getAnalytics = async (userId) => {
   ]);
   const avgLeadTime =
     leadTimeAgg.length > 0
-      ? Math.round(leadTimeAgg[0].avgLeadTime * 10) / 10
-      : 0;
+      ? Math.max(1, Math.round(leadTimeAgg[0].avgLeadTime * 10) / 10)
+      : null;
 
   // 7. Daily created (last 30 days)
   const dailyCreated = await Task.aggregate([
@@ -102,13 +102,14 @@ exports.getAnalytics = async (userId) => {
     { $sort: { _id: 1 } },
   ]);
 
-  // 9. Deadline crunch — pending tasks with dueDate in next 31 days
+  // 9. Deadline calendar — open tasks with dueDate in current month or next 31 days
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const deadlines = await Task.aggregate([
     {
       $match: {
         user: userObjId,
         status: { $ne: "completed" },
-        dueDate: { $gte: todayStart, $lte: next31Days },
+        dueDate: { $gte: monthStart, $lte: next31Days },
       },
     },
     {
