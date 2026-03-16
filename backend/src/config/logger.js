@@ -17,6 +17,6 @@ module.exports = createLogger({
     new transports.File({ filename: path.join(logDir, "combined.log"), level: "info" }),
     // errors to error.log
     new transports.File({ filename: path.join(logDir, "error.log"), level: "error" }),
-    // you can add other level-specific files, e.g. a debug.log for "debug" level
+    
   ],
 });
