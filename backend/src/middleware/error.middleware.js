@@ -1,10 +1,16 @@
 const logger = require("../config/logger");
 
 module.exports = (err, req, res, next) => {
-  logger.error(err.message);
+  const statusCode = err.statusCode || 500;
+  const isOperational = err.isOperational || false;
 
-  res.status(500).json({
+  logger.error(`${req.method} ${req.originalUrl} — ${err.message}`, {
+    statusCode,
+    stack: err.stack,
+  });
+
+  res.status(statusCode).json({
     success: false,
-    message: err.message || "Internal Server Error"
+    message: isOperational ? err.message : "Internal Server Error",
   });
 };

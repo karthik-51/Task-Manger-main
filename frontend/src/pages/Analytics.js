@@ -287,11 +287,16 @@ function DeadlineCalendar({ deadlines }) {
     });
   }
 
-  const heatStyle = (count, isPast = false) => {
+  const heatStyle = (count) => {
     if (count >= 5) return "bg-red-500 text-white";
     if (count >= 3) return "bg-orange-400 text-white";
     if (count >= 1) return "bg-amber-300 text-amber-900";
-    return isPast ? "bg-gray-100 text-gray-300" : "bg-gray-50 text-gray-500";
+    return "bg-gray-50 text-gray-500";
+  };
+
+  const overdueHeatStyle = (count) => {
+    if (count >= 1) return "bg-orange-600 text-white";
+    return "bg-gray-100 text-gray-300";
   };
 
   const monthName = today.toLocaleString("default", {
@@ -316,14 +321,9 @@ function DeadlineCalendar({ deadlines }) {
           <div
             key={i}
             className={`relative h-7 rounded flex items-center justify-center text-xs group cursor-default
-              ${!cell ? "" : heatStyle(cell.count, cell.isPast)}
+              ${!cell ? "" : cell.isPast ? overdueHeatStyle(cell.count) : heatStyle(cell.count)}
               ${cell?.isToday ? "ring-2 ring-blue-500 font-bold" : ""}
             `}
-            style={
-              cell?.isPast && !cell?.isToday && cell?.count > 0
-                ? { boxShadow: "inset 0 0 0 1.5px rgba(255,255,255,0.75)" }
-                : undefined
-            }
           >
             {cell && (
               <>
@@ -823,22 +823,21 @@ export default function Analytics() {
             </h3>
             <DeadlineCalendar deadlines={deadlines} />
             <div className="flex items-center gap-3 mt-3 flex-wrap text-xs text-gray-400">
+              <span className="text-gray-500 font-medium">Upcoming:</span>
               {[
-                { color: "bg-amber-300", label: "1-2 tasks" },
-                { color: "bg-orange-400", label: "3-4 tasks" },
-                { color: "bg-red-500", label: "5+ tasks" },
+                { color: "bg-amber-300", label: "1-2" },
+                { color: "bg-orange-400", label: "3-4" },
+                { color: "bg-red-500", label: "5+" },
               ].map(({ color, label }) => (
                 <span key={label} className="flex items-center gap-1">
                   <span className={`w-2.5 h-2.5 rounded-sm inline-block ${color}`} />
                   {label}
                 </span>
               ))}
+              <span className="text-gray-500 font-medium ml-1">Overdue:</span>
               <span className="flex items-center gap-1">
-                <span
-                  className="w-2.5 h-2.5 rounded-sm inline-block bg-amber-300"
-                  style={{ boxShadow: "inset 0 0 0 1.5px rgba(255,255,255,0.75)" }}
-                />
-                overdue
+                <span className="w-2.5 h-2.5 rounded-sm inline-block bg-orange-600" />
+                has tasks
               </span>
             </div>
           </div>

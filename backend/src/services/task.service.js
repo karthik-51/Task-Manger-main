@@ -1,116 +1,88 @@
 const Task = require("../models/task.model");
 const agenda = require("../config/agenda");
 const logger = require("../config/logger");
+const AppError = require("../utils/AppError");
 
 exports.create = async (data, userId) => {
-  logger.info("Task service: create", { userId, data });
+  logger.info("TaskService.create — started", { userId, title: data.title });
   const task = await Task.create({ ...data, user: userId });
 
   if (task.dueDate) {
-    const job = await agenda.schedule(task.dueDate, "notify-overdue-task", {
-      taskId: task._id,
-    });
+    const job = await agenda.schedule(task.dueDate, "notify-overdue-task", { taskId: task._id });
     await Task.findByIdAndUpdate(task._id, { jobId: job.attrs._id });
-    logger.info("Task service: scheduled notification", { taskId: task._id, jobId: job.attrs._id });
+    logger.info("TaskService.create — scheduled notification", { taskId: task._id, jobId: job.attrs._id });
   }
 
+  logger.info("TaskService.create — success", { taskId: task._id });
   return task;
 };
 
 exports.getAll = async (query, userId) => {
-  logger.info("Task service: getAll", { userId, query });
-  const {
-    page = 1,
-    limit = 10,
-    search,
-    priority,
-    status,
-    completed,
-    dueBefore,
-    dueAfter
-  } = query;
+  logger.info("TaskService.getAll — started", { userId, query });
+
+  const { search, priority, status, completed, dueBefore, dueAfter } = query;
 
   const filter = {
     user: userId,
-
-    ...(search && {
-      title: { $regex: search, $options: "i" }
-    }),
-
+    ...(search && { title: { $regex: search, $options: "i" } }),
     ...(priority && { priority }),
-
     ...(status && { status }),
-
-    ...(completed !== undefined && {
-      completed: completed === "true"
-    }),
-
+    ...(completed !== undefined && { completed: completed === "true" }),
     ...((dueBefore || dueAfter) && {
       dueDate: {
         ...(dueAfter && { $gte: new Date(dueAfter) }),
-        ...(dueBefore && { $lte: new Date(dueBefore) })
-      }
-    })
+        ...(dueBefore && { $lte: new Date(dueBefore) }),
+      },
+    }),
   };
 
-  const tasks = await Task.find(filter)
-    .skip((page - 1) * limit)
-    .limit(Number(limit))
-    .sort({ createdAt: -1 });
+  const tasks = await Task.find(filter).sort({ createdAt: -1 });
+  const total = tasks.length;
 
-  const total = await Task.countDocuments(filter);
-
-  return {
-    total,
-    page: Number(page),
-    tasks
-  };
+  logger.info("TaskService.getAll — success", { userId, total });
+  return { total, tasks };
 };
 
 exports.update = async (taskId, data, userId) => {
-  logger.info("Task service: update", { taskId, userId, data });
+  logger.info("TaskService.update — started", { taskId, userId });
   const task = await Task.findOne({ _id: taskId, user: userId });
+
   if (!task) {
-    logger.warn("Task service: update failed - not found", { taskId, userId });
-    throw new Error("Task not found");
+    logger.warn("TaskService.update — task not found", { taskId, userId });
+    throw new AppError("Task not found", 404);
   }
 
-  // Task completed before deadline — cancel the scheduled notification
   if (data.completed === true && task.jobId) {
     await agenda.cancel({ _id: task.jobId });
-    logger.info("Task service: cancelled job due to early completion", { taskId, jobId: task.jobId });
+    logger.info("TaskService.update — cancelled job (early completion)", { taskId, jobId: task.jobId });
   }
 
   if (data.dueDate && task.jobId) {
     await agenda.cancel({ _id: task.jobId });
-    const job = await agenda.schedule(
-      new Date(data.dueDate),
-      "notify-overdue-task",
-      { taskId: task._id },
-    );
+    const job = await agenda.schedule(new Date(data.dueDate), "notify-overdue-task", { taskId: task._id });
     data.jobId = job.attrs._id;
+    logger.info("TaskService.update — rescheduled notification", { taskId, jobId: job.attrs._id });
   }
 
-  return Task.findByIdAndUpdate(taskId, data, { new: true });
+  const updated = await Task.findByIdAndUpdate(taskId, data, { new: true });
+  logger.info("TaskService.update — success", { taskId });
+  return updated;
 };
 
 exports.remove = async (taskId, userId) => {
-  logger.info("Task service: remove", { taskId, userId });
-  const task = await Task.findOneAndDelete({
-    _id: taskId,
-    user: userId
-  });
+  logger.info("TaskService.remove — started", { taskId, userId });
+  const task = await Task.findOneAndDelete({ _id: taskId, user: userId });
 
   if (!task) {
-    logger.warn("Task service: remove failed - not found", { taskId, userId });
-    throw new Error("Task not found");
+    logger.warn("TaskService.remove — task not found", { taskId, userId });
+    throw new AppError("Task not found", 404);
   }
 
-  // Cancel scheduled notification if task is deleted
   if (task.jobId) {
     await agenda.cancel({ _id: task.jobId });
-    logger.info("Task service: cancelled job due to deletion", { taskId, jobId: task.jobId });
+    logger.info("TaskService.remove — cancelled job", { taskId, jobId: task.jobId });
   }
 
+  logger.info("TaskService.remove — success", { taskId });
   return task;
 };
