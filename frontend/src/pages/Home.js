@@ -9,7 +9,7 @@ export default function Home() {
       <div className="flex justify-between items-center px-10 py-5 bg-white shadow-sm">
 
         <h1 className="text-xl font-bold text-blue-600">
-          Enterprise Task Manager
+          Task Manager
         </h1>
 
         <div className="flex gap-6 items-center">
@@ -41,7 +41,7 @@ export default function Home() {
 
         <p className="mt-6 text-lg max-w-xl opacity-90">
           Plan, organize, and track tasks across teams with a powerful
-          enterprise task management system built for productivity.
+          task management system built for productivity.
         </p>
 
         <div className="flex gap-4 mt-8">
@@ -50,7 +50,7 @@ export default function Home() {
             to="/register"
             className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100"
           >
-            Start Free
+            Get Started
           </Link>
 
           <Link
