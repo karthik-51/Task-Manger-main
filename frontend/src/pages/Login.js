@@ -27,7 +27,6 @@ export default function Login() {
     setError("");
 
     try {
-
       if (!form.email || !form.password) {
         return setError("All fields are required");
       }
@@ -43,7 +42,6 @@ export default function Login() {
       toast.success("Login successful 🎉");
 
     } catch (err) {
-
       const message =
         err?.response?.data?.message ||
         "Invalid email or password";
@@ -69,13 +67,18 @@ export default function Login() {
         </h2>
 
         {error && (
-          <div className="bg-red-100 text-red-700 p-2 mb-4 rounded text-sm">
+          <div
+            data-testid="error-message"
+            className="bg-red-100 text-red-700 p-2 mb-4 rounded text-sm"
+          >
             {error}
           </div>
         )}
 
         {/* Email */}
         <input
+          data-testid="email"
+          name="email"
           className="border rounded p-2 w-full mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Email"
           value={form.email}
@@ -87,6 +90,8 @@ export default function Login() {
         {/* Password */}
         <div className="relative mb-4">
           <input
+            data-testid="password"
+            name="password"
             type={showPassword ? "text" : "password"}
             className="border rounded p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Password"
@@ -97,26 +102,28 @@ export default function Login() {
           />
 
           <span
+            data-testid="toggle-password"
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-2 cursor-pointer text-gray-500"
           >
             {showPassword ? "Hide" : "Show"}
           </span>
         </div>
+
         {/* Forgot Password Link */}
         <div className="text-right mb-4">
-
-  <Link
-    to="/forgot-password"
-    className="text-sm text-blue-600 hover:underline"
-  >
-    Forgot Password?
-  </Link>
-
-</div>
+          <Link
+            to="/forgot-password"
+            data-testid="forgot-password-link"
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Forgot Password?
+          </Link>
+        </div>
 
         {/* Login Button */}
         <button
+          data-testid="login-btn"
           disabled={loading}
           className={`w-full py-2 rounded text-white font-semibold transition
           ${
@@ -131,13 +138,24 @@ export default function Login() {
         {/* Register Link */}
         <p className="text-center text-sm text-gray-500 mt-4">
           Don't have an account?{" "}
-          <Link to="/register" className="text-blue-600 font-semibold hover:underline">
+          <Link
+            to="/register"
+            data-testid="register-link"
+            className="text-blue-600 font-semibold hover:underline"
+          >
             Register
           </Link>
         </p>
 
+        {/* Back to Home */}
         <p className="text-center text-sm text-gray-400 mt-2">
-          <Link to="/" className="hover:underline">← Back to Home</Link>
+          <Link
+            to="/"
+            data-testid="home-link"
+            className="hover:underline"
+          >
+            ← Back to Home
+          </Link>
         </p>
 
       </form>

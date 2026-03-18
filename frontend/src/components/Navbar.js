@@ -1,4 +1,3 @@
-
 import { useContext, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AuthContext } from "../auth/AuthContext";
@@ -11,7 +10,6 @@ export default function Navbar() {
 
   const isActive = (path) => location.pathname === path;
 
-  // Get initials from name
   const getInitials = (name) => {
     if (!name) return "";
     const parts = name.split(" ");
@@ -33,6 +31,7 @@ export default function Navbar() {
         <div className="relative">
 
           <div
+            data-testid="user-avatar"
             onClick={() => setOpen(!open)}
             className="w-11 h-11 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold cursor-pointer border-2 border-white shadow-md"
           >
@@ -41,15 +40,22 @@ export default function Navbar() {
 
           {/* DROPDOWN */}
           {open && (
-            <div className="absolute right-0 top-14 bg-white text-gray-700 shadow-lg rounded-lg w-56 border">
+            <div
+              data-testid="user-dropdown"
+              className="absolute right-0 top-14 bg-white text-gray-700 shadow-lg rounded-lg w-56 border"
+            >
 
               {/* EMAIL */}
-              <div className="px-4 py-3 border-b text-sm text-gray-600">
+              <div
+                data-testid="user-email"
+                className="px-4 py-3 border-b text-sm text-gray-600"
+              >
                 {user?.email}
               </div>
 
               {/* LOGOUT */}
               <button
+                data-testid="logout-btn"
                 onClick={logout}
                 className="block w-full text-left px-4 py-2 hover:bg-red-100 text-red-500 text-sm"
               >
@@ -68,6 +74,7 @@ export default function Navbar() {
 
         <Link
           to="/dashboard"
+          data-testid="nav-dashboard"
           className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             isActive("/dashboard")
               ? "border-blue-600 text-blue-600"
@@ -79,6 +86,7 @@ export default function Navbar() {
 
         <Link
           to="/analytics"
+          data-testid="analytics-link"
           className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             isActive("/analytics")
               ? "border-blue-600 text-blue-600"

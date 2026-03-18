@@ -1,31 +1,23 @@
-
-
-version: "3.9"
+version: "3.8"
 
 services:
-
   backend:
     build: ./backend
-    container_name: task-backend
     ports:
       - "5000:5000"
-
-   
     env_file:
-      - .env
-
-    volumes:
-      - ./backend:/app
-
-    restart: always
+      - ./backend/.env
+    depends_on:
+      - mongo
 
   frontend:
     build: ./frontend
-    container_name: task-frontend
     ports:
-      - "3000:3000"
-
+      - "3000:80"
     depends_on:
       - backend
 
-    restart: always
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
