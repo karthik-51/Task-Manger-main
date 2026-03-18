@@ -88,7 +88,6 @@ describe("Full Clean E2E Flow", () => {
     cy.get('[data-testid="user-avatar"]').click();
     cy.get('[data-testid="logout-btn"]').click();
 
- 
   });
 
 });
