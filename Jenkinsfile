@@ -1,23 +1,44 @@
 pipeline {
     agent any
 
+    environment {
+        COMPOSE_PROJECT_NAME = "taskmanager"
+    }
+
     stages {
-        stage('Clone Code') {
+
+        stage('Check Docker & Compose') {
             steps {
-                git 'https://github.com/karthik-51/Task-Manger-main.git'
+                sh 'docker --version'
+                sh 'docker-compose --version'
             }
         }
 
-        stage('Docker Compose Down') {
+        stage('Stop Existing Containers') {
             steps {
                 sh 'docker-compose down || true'
             }
         }
 
-        stage('Docker Compose Build & Run') {
+        stage('Build & Start Containers') {
             steps {
                 sh 'docker-compose up --build -d'
             }
+        }
+
+        stage('Verify Running Containers') {
+            steps {
+                sh 'docker ps'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Deployment Successful!'
+        }
+        failure {
+            echo '❌ Deployment Failed!'
         }
     }
 }
