@@ -10,6 +10,16 @@ pipeline {
             }
         }
 
+        stage('Create .env File') {
+            steps {
+                sh '''
+                echo "PORT=5000" > backend/.env
+                echo "MONGO_URI=mongodb://mongo:27017/taskdb" >> backend/.env
+                echo "JWT_SECRET=secret123" >> backend/.env
+                '''
+            }
+        }
+
         stage('Stop Existing Containers') {
             steps {
                 sh 'docker-compose down || true'
