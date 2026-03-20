@@ -10,32 +10,22 @@ pipeline {
             }
         }
 
-        stage('Create .env File') {
+        stage('Run Inside Project Directory') {
             steps {
-                sh '''
-                echo "PORT=5000" > backend/.env
-                echo "MONGO_URI=mongodb+srv://havmore75_db_user:fkXTlhrzbrpqoiwe@taskmanger-ai.ffvm0ak.mongodb.net/?appName=TaskManger-AI" >> backend/.env
-                echo "JWT_SECRET=secret123" >> backend/.env
-                '''
-            }
-        }
+                dir('Task-Manger-main') {
 
-        stage('Clean Old Containers & Cache') {
-            steps {
-                sh 'docker-compose down -v || true'
-                sh 'docker system prune -af || true'
-            }
-        }
+                    sh '''
+                    echo "PORT=5000" > backend/.env
+                    echo "MONGO_URI=mongodb+srv://havmore75_db_user:fkXTlhrzbrpqoiwe@taskmanger-ai.ffvm0ak.mongodb.net/?appName=TaskManger-AI" >> backend/.env
+                    echo "JWT_SECRET=secret123" >> backend/.env
+                    '''
 
-        stage('Build Fresh Images') {
-            steps {
-                sh 'docker-compose build --no-cache'
-            }
-        }
+                    sh 'docker-compose down -v || true'
+                    sh 'docker system prune -af || true'
 
-        stage('Start Containers') {
-            steps {
-                sh 'docker-compose up -d'
+                    sh 'docker-compose build --no-cache'
+                    sh 'docker-compose up -d'
+                }
             }
         }
 
