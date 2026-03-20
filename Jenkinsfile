@@ -20,15 +20,22 @@ pipeline {
             }
         }
 
-        stage('Stop Existing Containers') {
+        stage('Clean Old Containers & Cache') {
             steps {
-                sh 'docker-compose down || true'
+                sh 'docker-compose down -v || true'
+                sh 'docker system prune -af || true'
             }
         }
 
-        stage('Build & Start Containers') {
+        stage('Build Fresh Images') {
             steps {
-                sh 'docker-compose up --build -d'
+                sh 'docker-compose build --no-cache'
+            }
+        }
+
+        stage('Start Containers') {
+            steps {
+                sh 'docker-compose up -d'
             }
         }
 
