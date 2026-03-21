@@ -286,7 +286,7 @@ pipeline {
             agent any
             steps {
                 checkout([
-                    \$class: 'GitSCM',
+                    $class: 'GitSCM',
                     branches: [[name: '*/main']],
                     userRemoteConfigs: [[url: "${GIT_REPO}"]]
                 ])
