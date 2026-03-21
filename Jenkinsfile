@@ -1,3 +1,4 @@
+
 // pipeline {
 //     agent none
 
@@ -7,7 +8,7 @@
 //         FRONTEND_IMAGE      = "${REGISTRY}/task-frontend"
 //         IMAGE_TAG           = "${BUILD_NUMBER}"
 
-//         LOG_DIR             = "${WORKSPACE}/jenkins-logs"
+//         LOG_DIR_NAME        = "jenkins-logs"
 
 //         GIT_BRANCH          = "main"
 //         GIT_REPO            = "https://github.com/karthik-51/Task-Manger-main.git"
@@ -15,7 +16,7 @@
 //         DOCKER_CREDS_ID     = "docker-hub-credentials"
 //         EC2_SSH_CREDS       = "ec2-ssh-key"
 
-//         EC2_HOST            = "ubuntu@18.60.109.7 "
+//         EC2_HOST            = "ubuntu@18.60.109.7"
 //         DEPLOY_DIR          = "/home/ubuntu/Task-Manger-main"
 //     }
 
@@ -29,22 +30,29 @@
 //         stage('Init Logs') {
 //             agent any
 //             steps {
-//                 sh '''
-//                     rm -rf "${LOG_DIR}"
-//                     mkdir -p "${LOG_DIR}"
-//                     echo "===== PIPELINE STARTED: $(date) =====" | tee -a "${LOG_DIR}/pipeline.log"
-//                 '''
+//                 sh """
+//                     rm -rf "${WORKSPACE}/${LOG_DIR_NAME}"
+//                     mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
+//                     echo "===== PIPELINE STARTED: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+//                 """
 //             }
 //         }
 
 //         stage('Checkout') {
 //             agent any
 //             steps {
-//                 git branch: "${GIT_BRANCH}", url: "${GIT_REPO}"
-//                 sh '''
-//                     echo "===== CHECKOUT STAGE =====" | tee -a "${LOG_DIR}/checkout.log"
-//                     git rev-parse --short HEAD | tee -a "${LOG_DIR}/checkout.log"
-//                 '''
+//                 checkout([
+//                     $class: 'GitSCM',
+//                     branches: [[name: '*/main']],
+//                     userRemoteConfigs: [[url: "${GIT_REPO}"]]
+//                 ])
+
+//                 sh """
+//                     echo "===== CHECKOUT STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/checkout.log"
+//                     git remote -v | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/checkout.log"
+//                     git branch -a | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/checkout.log"
+//                     git rev-parse --short HEAD | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/checkout.log"
+//                 """
 //             }
 //         }
 
@@ -60,11 +68,11 @@
 //                     }
 //                     steps {
 //                         dir('backend') {
-//                             sh '''
-//                                 echo "===== BACKEND BUILD STAGE =====" | tee -a "${LOG_DIR}/backend-build.log"
-//                                 npm install 2>&1 | tee -a "${LOG_DIR}/backend-build.log"
-//                                 npm run build --if-present 2>&1 | tee -a "${LOG_DIR}/backend-build.log"
-//                             '''
+//                             sh """
+//                                 echo "===== BACKEND BUILD STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-build.log"
+//                                 npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-build.log"
+//                                 npm run build --if-present 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-build.log"
+//                             """
 //                         }
 //                     }
 //                 }
@@ -79,11 +87,11 @@
 //                     }
 //                     steps {
 //                         dir('frontend') {
-//                             sh '''
-//                                 echo "===== FRONTEND BUILD STAGE =====" | tee -a "${LOG_DIR}/frontend-build.log"
-//                                 npm install 2>&1 | tee -a "${LOG_DIR}/frontend-build.log"
-//                                 npm run build 2>&1 | tee -a "${LOG_DIR}/frontend-build.log"
-//                             '''
+//                             sh """
+//                                 echo "===== FRONTEND BUILD STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
+//                                 npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
+//                                 npm run build 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
+//                             """
 //                         }
 //                     }
 //                 }
@@ -100,11 +108,11 @@
 //             }
 //             steps {
 //                 dir('backend') {
-//                     sh '''
-//                         echo "===== BACKEND TEST STAGE (JEST) =====" | tee -a "${LOG_DIR}/backend-test.log"
-//                         npm install 2>&1 | tee -a "${LOG_DIR}/backend-test.log"
-//                         npm test 2>&1 | tee -a "${LOG_DIR}/backend-test.log"
-//                     '''
+//                     sh """
+//                         echo "===== BACKEND TEST STAGE (JEST) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-test.log"
+//                         npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-test.log"
+//                         npm test 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-test.log"
+//                     """
 //                 }
 //             }
 //         }
@@ -121,11 +129,11 @@
 //                     }
 //                     steps {
 //                         dir('backend') {
-//                             sh '''
-//                                 echo "===== BACKEND CODE ANALYSIS =====" | tee -a "${LOG_DIR}/backend-analysis.log"
-//                                 npm install 2>&1 | tee -a "${LOG_DIR}/backend-analysis.log"
-//                                 npm run lint --if-present 2>&1 | tee -a "${LOG_DIR}/backend-analysis.log"
-//                             '''
+//                             sh """
+//                                 echo "===== BACKEND CODE ANALYSIS =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-analysis.log"
+//                                 npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-analysis.log"
+//                                 npm run lint --if-present 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-analysis.log"
+//                             """
 //                         }
 //                     }
 //                 }
@@ -140,11 +148,11 @@
 //                     }
 //                     steps {
 //                         dir('frontend') {
-//                             sh '''
-//                                 echo "===== FRONTEND CODE ANALYSIS =====" | tee -a "${LOG_DIR}/frontend-analysis.log"
-//                                 npm install 2>&1 | tee -a "${LOG_DIR}/frontend-analysis.log"
-//                                 npm run lint --if-present 2>&1 | tee -a "${LOG_DIR}/frontend-analysis.log"
-//                             '''
+//                             sh """
+//                                 echo "===== FRONTEND CODE ANALYSIS =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
+//                                 npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
+//                                 npm run lint --if-present 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
+//                             """
 //                         }
 //                     }
 //                 }
@@ -154,15 +162,15 @@
 //         stage('Build Docker Images') {
 //             agent any
 //             steps {
-//                 sh '''
-//                     echo "===== DOCKER BUILD STAGE =====" | tee -a "${LOG_DIR}/docker-build.log"
+//                 sh """
+//                     echo "===== DOCKER BUILD STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
 
-//                     docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend 2>&1 | tee -a "${LOG_DIR}/docker-build.log"
-//                     docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest 2>&1 | tee -a "${LOG_DIR}/docker-build.log"
+//                     docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
+//                     docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
 
-//                     docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend 2>&1 | tee -a "${LOG_DIR}/docker-build.log"
-//                     docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest 2>&1 | tee -a "${LOG_DIR}/docker-build.log"
-//                 '''
+//                     docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
+//                     docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
+//                 """
 //             }
 //         }
 
@@ -170,15 +178,15 @@
 //             agent any
 //             steps {
 //                 withDockerRegistry([credentialsId: "${DOCKER_CREDS_ID}", url: '']) {
-//                     sh '''
-//                         echo "===== DOCKER PUSH STAGE =====" | tee -a "${LOG_DIR}/docker-push.log"
+//                     sh """
+//                         echo "===== DOCKER PUSH STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
 
-//                         docker push ${BACKEND_IMAGE}:${IMAGE_TAG} 2>&1 | tee -a "${LOG_DIR}/docker-push.log"
-//                         docker push ${BACKEND_IMAGE}:latest 2>&1 | tee -a "${LOG_DIR}/docker-push.log"
+//                         docker push ${BACKEND_IMAGE}:${IMAGE_TAG} 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
+//                         docker push ${BACKEND_IMAGE}:latest 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
 
-//                         docker push ${FRONTEND_IMAGE}:${IMAGE_TAG} 2>&1 | tee -a "${LOG_DIR}/docker-push.log"
-//                         docker push ${FRONTEND_IMAGE}:latest 2>&1 | tee -a "${LOG_DIR}/docker-push.log"
-//                     '''
+//                         docker push ${FRONTEND_IMAGE}:${IMAGE_TAG} 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
+//                         docker push ${FRONTEND_IMAGE}:latest 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
+//                     """
 //                 }
 //             }
 //         }
@@ -187,14 +195,14 @@
 //             agent any
 //             steps {
 //                 sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
-//                     sh '''
-//                         echo "===== CHECK DEPLOY FILES STAGE =====" | tee -a "${LOG_DIR}/deploy-check.log"
+//                     sh """
+//                         echo "===== CHECK DEPLOY FILES STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/deploy-check.log"
 
 //                         ssh -o StrictHostKeyChecking=no ${EC2_HOST} "
 //                             test -f ${DEPLOY_DIR}/docker-compose.deploy.yml &&
 //                             test -f ${DEPLOY_DIR}/.env
-//                         " 2>&1 | tee -a "${LOG_DIR}/deploy-check.log"
-//                     '''
+//                         " 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/deploy-check.log"
+//                     """
 //                 }
 //             }
 //         }
@@ -203,8 +211,8 @@
 //             agent any
 //             steps {
 //                 sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
-//                     sh '''
-//                         echo "===== DEPLOY STAGE =====" | tee -a "${LOG_DIR}/deploy.log"
+//                     sh """
+//                         echo "===== DEPLOY STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/deploy.log"
 
 //                         ssh -o StrictHostKeyChecking=no ${EC2_HOST} "
 //                             cd ${DEPLOY_DIR} &&
@@ -214,8 +222,8 @@
 //                             docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest &&
 //                             docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest &&
 //                             docker compose -f docker-compose.deploy.yml up -d
-//                         " 2>&1 | tee -a "${LOG_DIR}/deploy.log"
-//                     '''
+//                         " 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/deploy.log"
+//                     """
 //                 }
 //             }
 //         }
@@ -223,28 +231,40 @@
 
 //     post {
 //         success {
-//             sh '''
-//                 echo "===== PIPELINE SUCCESS: $(date) =====" | tee -a "${LOG_DIR}/pipeline.log"
-//             '''
-//             archiveArtifacts artifacts: 'jenkins-logs/*.log', fingerprint: true
+//             node {
+//                 sh """
+//                     mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
+//                     echo "===== PIPELINE SUCCESS: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+//                 """
+//                 archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
+//             }
 //         }
 
 //         failure {
-//             sh '''
-//                 echo "===== PIPELINE FAILED: $(date) =====" | tee -a "${LOG_DIR}/pipeline.log"
-//             '''
-//             archiveArtifacts artifacts: 'jenkins-logs/*.log', fingerprint: true
+//             node {
+//                 sh """
+//                     mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
+//                     echo "===== PIPELINE FAILED: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+//                 """
+//                 archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
+//             }
 //         }
 
 //         always {
-//             sh '''
-//                 echo "===== PIPELINE FINISHED: $(date) =====" | tee -a "${LOG_DIR}/pipeline.log"
-//             '''
+//             node {
+//                 sh """
+//                     mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
+//                     echo "===== PIPELINE FINISHED: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+//                 """
+//             }
 //         }
 //     }
 // }
+
+
+
 pipeline {
-    agent none
+    agent any
 
     environment {
         REGISTRY            = "mathew664"
@@ -272,7 +292,6 @@ pipeline {
 
     stages {
         stage('Init Logs') {
-            agent any
             steps {
                 sh """
                     rm -rf "${WORKSPACE}/${LOG_DIR_NAME}"
@@ -283,7 +302,6 @@ pipeline {
         }
 
         stage('Checkout') {
-            agent any
             steps {
                 checkout([
                     $class: 'GitSCM',
@@ -404,7 +422,6 @@ pipeline {
         }
 
         stage('Build Docker Images') {
-            agent any
             steps {
                 sh """
                     echo "===== DOCKER BUILD STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
@@ -419,7 +436,6 @@ pipeline {
         }
 
         stage('Push Docker Images') {
-            agent any
             steps {
                 withDockerRegistry([credentialsId: "${DOCKER_CREDS_ID}", url: '']) {
                     sh """
@@ -436,7 +452,6 @@ pipeline {
         }
 
         stage('Check Deploy Files on EC2') {
-            agent any
             steps {
                 sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
                     sh """
@@ -452,7 +467,6 @@ pipeline {
         }
 
         stage('Deploy to EC2') {
-            agent any
             steps {
                 sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
                     sh """
@@ -475,32 +489,26 @@ pipeline {
 
     post {
         success {
-            node {
-                sh """
-                    mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
-                    echo "===== PIPELINE SUCCESS: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
-                """
-                archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
-            }
+            sh """
+                mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
+                echo "===== PIPELINE SUCCESS: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+            """
+            archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
         }
 
         failure {
-            node {
-                sh """
-                    mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
-                    echo "===== PIPELINE FAILED: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
-                """
-                archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
-            }
+            sh """
+                mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
+                echo "===== PIPELINE FAILED: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+            """
+            archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
         }
 
         always {
-            node {
-                sh """
-                    mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
-                    echo "===== PIPELINE FINISHED: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
-                """
-            }
+            sh """
+                mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
+                echo "===== PIPELINE FINISHED: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+            """
         }
     }
 }
