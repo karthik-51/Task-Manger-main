@@ -1,4 +1,5 @@
 
+
 {
   "name": "enterprise-task-backend",
   "version": "1.0.0",
@@ -6,7 +7,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-
+    "build": "echo \"No backend build step required\"",
+    "lint": "echo \"No lint configured for backend yet\"",
     "test": "cross-env NODE_ENV=test jest",
     "test:watch": "cross-env NODE_ENV=test jest --watch",
     "test:coverage": "cross-env NODE_ENV=test jest --coverage",
