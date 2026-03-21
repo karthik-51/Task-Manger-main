@@ -15,7 +15,7 @@ pipeline {
         DOCKER_CREDS_ID     = "docker-hub-credentials"
         EC2_SSH_CREDS       = "ec2-ssh-key"
 
-        EC2_HOST            = "ubuntu@YOUR_EC2_PUBLIC_IP"
+        EC2_HOST            = "ubuntu@18.60.109.7 "
         DEPLOY_DIR          = "/home/ubuntu/Task-Manger-main"
     }
 
