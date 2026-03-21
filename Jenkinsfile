@@ -1,3 +1,4 @@
+give 
 pipeline {
     agent any
 
@@ -28,13 +29,11 @@ pipeline {
     stages {
         stage('Init Logs') {
             steps {
-                sh '''
-                    #!/bin/bash
-                    set -e
+                sh """
+                    rm -rf "${WORKSPACE}/${LOG_DIR_NAME}"
                     mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
-                    rm -f "${WORKSPACE}/${LOG_DIR_NAME}"/*.log
-                    echo "===== PIPELINE STARTED: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
-                '''
+                    echo "===== PIPELINE STARTED: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+                """
             }
         }
 
@@ -46,15 +45,12 @@ pipeline {
                     userRemoteConfigs: [[url: "${GIT_REPO}"]]
                 ])
 
-                sh '''
-                    #!/bin/bash
-                    set -e
-                    set -o pipefail
+                sh """
                     echo "===== CHECKOUT STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/checkout.log"
                     git remote -v | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/checkout.log"
                     git branch -a | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/checkout.log"
                     git rev-parse --short HEAD | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/checkout.log"
-                '''
+                """
             }
         }
 
@@ -70,14 +66,11 @@ pipeline {
                     }
                     steps {
                         dir('backend') {
-                            sh '''
-                                #!/bin/bash
-                                set -e
-                                set -o pipefail
+                            sh """
                                 echo "===== BACKEND BUILD STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-build.log"
                                 npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-build.log"
                                 npm run build --if-present 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-build.log"
-                            '''
+                            """
                         }
                     }
                 }
@@ -92,14 +85,11 @@ pipeline {
                     }
                     steps {
                         dir('frontend') {
-                            sh '''
-                                #!/bin/bash
-                                set -e
-                                set -o pipefail
+                            sh """
                                 echo "===== FRONTEND BUILD STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
                                 npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
                                 npm run build 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
-                            '''
+                            """
                         }
                     }
                 }
@@ -116,14 +106,11 @@ pipeline {
             }
             steps {
                 dir('backend') {
-                    sh '''
-                        #!/bin/bash
-                        set -e
-                        set -o pipefail
-                        echo "===== BACKEND TEST STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-test.log"
+                    sh """
+                        echo "===== BACKEND TEST STAGE (JEST) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-test.log"
                         npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-test.log"
                         npm test 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-test.log"
-                    '''
+                    """
                 }
             }
         }
@@ -140,14 +127,11 @@ pipeline {
                     }
                     steps {
                         dir('backend') {
-                            sh '''
-                                #!/bin/bash
-                                set -e
-                                set -o pipefail
+                            sh """
                                 echo "===== BACKEND CODE ANALYSIS =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-analysis.log"
                                 npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-analysis.log"
                                 npm run lint --if-present 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-analysis.log"
-                            '''
+                            """
                         }
                     }
                 }
@@ -162,14 +146,11 @@ pipeline {
                     }
                     steps {
                         dir('frontend') {
-                            sh '''
-                                #!/bin/bash
-                                set -e
-                                set -o pipefail
+                            sh """
                                 echo "===== FRONTEND CODE ANALYSIS =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
                                 npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
                                 npm run lint --if-present 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
-                            '''
+                            """
                         }
                     }
                 }
@@ -178,10 +159,7 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                sh '''
-                    #!/bin/bash
-                    set -e
-                    set -o pipefail
+                sh """
                     echo "===== DOCKER BUILD STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
 
                     docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
@@ -189,17 +167,14 @@ pipeline {
 
                     docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
                     docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
-                '''
+                """
             }
         }
 
         stage('Push Docker Images') {
             steps {
                 withDockerRegistry([credentialsId: "${DOCKER_CREDS_ID}", url: '']) {
-                    sh '''
-                        #!/bin/bash
-                        set -e
-                        set -o pipefail
+                    sh """
                         echo "===== DOCKER PUSH STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
 
                         docker push ${BACKEND_IMAGE}:${IMAGE_TAG} 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
@@ -207,7 +182,7 @@ pipeline {
 
                         docker push ${FRONTEND_IMAGE}:${IMAGE_TAG} 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
                         docker push ${FRONTEND_IMAGE}:latest 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
-                    '''
+                    """
                 }
             }
         }
@@ -215,18 +190,14 @@ pipeline {
         stage('Check Deploy Files on EC2') {
             steps {
                 sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
-                    sh '''
-                        #!/bin/bash
-                        set -e
-                        set -o pipefail
+                    sh """
                         echo "===== CHECK DEPLOY FILES STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/deploy-check.log"
 
                         ssh -o StrictHostKeyChecking=no ${EC2_HOST} "
-                            test -d ${DEPLOY_DIR} &&
                             test -f ${DEPLOY_DIR}/docker-compose.deploy.yml &&
                             test -f ${DEPLOY_DIR}/.env
                         " 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/deploy-check.log"
-                    '''
+                    """
                 }
             }
         }
@@ -234,23 +205,19 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
-                    sh '''
-                        #!/bin/bash
-                        set -e
-                        set -o pipefail
+                    sh """
                         echo "===== DEPLOY STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/deploy.log"
 
                         ssh -o StrictHostKeyChecking=no ${EC2_HOST} "
-                            set -e
-                            cd ${DEPLOY_DIR}
-                            docker compose -f docker-compose.deploy.yml down || true
-                            docker pull ${BACKEND_IMAGE}:${IMAGE_TAG}
-                            docker pull ${FRONTEND_IMAGE}:${IMAGE_TAG}
-                            docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest
-                            docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
+                            cd ${DEPLOY_DIR} &&
+                            docker compose -f docker-compose.deploy.yml down || true &&
+                            docker pull ${BACKEND_IMAGE}:${IMAGE_TAG} &&
+                            docker pull ${FRONTEND_IMAGE}:${IMAGE_TAG} &&
+                            docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest &&
+                            docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest &&
                             docker compose -f docker-compose.deploy.yml up -d
                         " 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/deploy.log"
-                    '''
+                    """
                 }
             }
         }
@@ -258,29 +225,26 @@ pipeline {
 
     post {
         success {
-            sh '''
-                #!/bin/bash
+            sh """
                 mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
-                echo "===== PIPELINE SUCCESS: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
-            '''
+                echo "===== PIPELINE SUCCESS: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+            """
             archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
         }
 
         failure {
-            sh '''
-                #!/bin/bash
+            sh """
                 mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
-                echo "===== PIPELINE FAILED: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
-            '''
+                echo "===== PIPELINE FAILED: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+            """
             archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
         }
 
         always {
-            sh '''
-                #!/bin/bash
+            sh """
                 mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
-                echo "===== PIPELINE FINISHED: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
-            '''
+                echo "===== PIPELINE FINISHED: \$(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+            """
         }
     }
-}
+} 
