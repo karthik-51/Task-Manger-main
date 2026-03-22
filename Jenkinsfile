@@ -468,9 +468,7 @@ pipeline {
         }
 
         stage('Check Deploy Files on EC2') {
-            when {
-                branch 'main'
-            }
+            
             steps {
                 sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
                     sh '''
@@ -490,9 +488,7 @@ pipeline {
         }
 
         stage('Deploy to EC2') {
-            when {
-                branch 'main'
-            }
+            
             steps {
                 sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
                     sh '''
