@@ -1,5 +1,3 @@
-
-
 {
   "name": "enterprise-task-backend",
   "version": "1.0.0",
@@ -9,10 +7,10 @@
     "start": "node src/server.js",
     "build": "echo \"No backend build step required\"",
     "lint": "echo \"No lint configured for backend yet\"",
-    "test": "cross-env NODE_ENV=test jest",
-    "test:watch": "cross-env NODE_ENV=test jest --watch",
-    "test:coverage": "cross-env NODE_ENV=test jest --coverage",
-    "test:debug": "cross-env NODE_ENV=test jest --detectOpenHandles --runInBand"
+    "test": "cross-env NODE_ENV=test JWT_SECRET=test-jwt-secret JWT_REFRESH_SECRET=test-refresh-secret ACCESS_EXPIRE=1h REFRESH_EXPIRE=7d jest",
+    "test:watch": "cross-env NODE_ENV=test JWT_SECRET=test-jwt-secret JWT_REFRESH_SECRET=test-refresh-secret ACCESS_EXPIRE=1h REFRESH_EXPIRE=7d jest --watch",
+    "test:coverage": "cross-env NODE_ENV=test JWT_SECRET=test-jwt-secret JWT_REFRESH_SECRET=test-refresh-secret ACCESS_EXPIRE=1h REFRESH_EXPIRE=7d jest --coverage",
+    "test:debug": "cross-env NODE_ENV=test JWT_SECRET=test-jwt-secret JWT_REFRESH_SECRET=test-refresh-secret ACCESS_EXPIRE=1h REFRESH_EXPIRE=7d jest --detectOpenHandles --runInBand"
   },
   "dependencies": {
     "agenda": "^4.4.0",
