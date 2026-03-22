@@ -258,7 +258,6 @@ pipeline {
 
         LOG_DIR_NAME        = "jenkins-logs"
 
-        GIT_BRANCH          = "main"
         GIT_REPO            = "https://github.com/karthik-51/Task-Manger-main.git"
 
         DOCKER_CREDS_ID     = "docker-hub-credentials"
@@ -279,12 +278,9 @@ pipeline {
         stage('Init Logs') {
             steps {
                 sh '''
-                    bash -lc '
-                    set -e
                     mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
                     rm -f "${WORKSPACE}/${LOG_DIR_NAME}"/*.log
                     echo "===== PIPELINE STARTED: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
-                    '
                 '''
             }
         }
@@ -317,7 +313,7 @@ pipeline {
                         docker {
                             image 'node:20'
                             reuseNode true
-                            args '-u root:root'
+                            args '--entrypoint="" -u root:root'
                         }
                     }
                     steps {
@@ -340,7 +336,7 @@ pipeline {
                         docker {
                             image 'node:20'
                             reuseNode true
-                            args '-u root:root'
+                            args '--entrypoint="" -u root:root'
                         }
                     }
                     steps {
@@ -350,7 +346,7 @@ pipeline {
                                 set -e
                                 set -o pipefail
                                 echo "===== FRONTEND BUILD STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
-                                npm ci 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
+                                npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
                                 npm run build 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
                                 '
                             '''
@@ -365,7 +361,7 @@ pipeline {
                 docker {
                     image 'node:20'
                     reuseNode true
-                    args '-u root:root'
+                    args '--entrypoint="" -u root:root'
                 }
             }
             steps {
@@ -390,7 +386,7 @@ pipeline {
                         docker {
                             image 'node:20'
                             reuseNode true
-                            args '-u root:root'
+                            args '--entrypoint="" -u root:root'
                         }
                     }
                     steps {
@@ -413,7 +409,7 @@ pipeline {
                         docker {
                             image 'node:20'
                             reuseNode true
-                            args '-u root:root'
+                            args '--entrypoint="" -u root:root'
                         }
                     }
                     steps {
@@ -423,7 +419,7 @@ pipeline {
                                 set -e
                                 set -o pipefail
                                 echo "===== FRONTEND CODE ANALYSIS =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
-                                npm ci 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
+                                npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
                                 npm run lint --if-present 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
                                 '
                             '''
