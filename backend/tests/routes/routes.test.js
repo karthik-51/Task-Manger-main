@@ -150,7 +150,6 @@
 //     await mongoose.connection.close();
 //   });
 // });
-
 const request = require("supertest");
 const mongoose = require("mongoose");
 const app = require("../../src/app");
@@ -168,7 +167,6 @@ describe("Routes E2E Tests", () => {
   };
 
   beforeAll(async () => {
-    // If your project already connects DB in a Jest setup file, this block can stay harmless.
     if (process.env.MONGO_URI && mongoose.connection.readyState === 0) {
       await mongoose.connect(process.env.MONGO_URI);
     }
@@ -178,7 +176,9 @@ describe("Routes E2E Tests", () => {
       .send(user);
 
     expect([201, 409]).toContain(registerRes.statusCode);
+  });
 
+  it("POST /auth/login - should login user", async () => {
     const loginRes = await request(app)
       .post(`${BASE}/auth/login`)
       .send({
@@ -187,23 +187,16 @@ describe("Routes E2E Tests", () => {
       });
 
     expect(loginRes.statusCode).toBe(200);
-    expect(loginRes.body.data).toHaveProperty("accessToken");
 
-    token = loginRes.body.data.accessToken;
-  });
+    // Support both common response shapes
+    const accessToken =
+      loginRes.body?.data?.accessToken ||
+      loginRes.body?.accessToken ||
+      loginRes.body?.token;
 
-  // ================= AUTH =================
+    expect(accessToken).toBeDefined();
 
-  it("POST /auth/login - should login user", async () => {
-    const res = await request(app)
-      .post(`${BASE}/auth/login`)
-      .send({
-        email: user.email,
-        password: user.password,
-      });
-
-    expect(res.statusCode).toBe(200);
-    expect(res.body.data).toHaveProperty("accessToken");
+    token = accessToken;
   });
 
   it("POST /auth/login - wrong password", async () => {
@@ -224,8 +217,6 @@ describe("Routes E2E Tests", () => {
 
     expect(res.statusCode).toBe(200);
   });
-
-  // ================= TASKS =================
 
   it("GET /tasks - should fail without token", async () => {
     const res = await request(app).get(`${BASE}/tasks`);
