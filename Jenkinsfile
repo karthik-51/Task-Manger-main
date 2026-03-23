@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY            = "mathew664"
+        REGISTRY            = "havmore"
         BACKEND_IMAGE       = "${REGISTRY}/task-backend"
         FRONTEND_IMAGE      = "${REGISTRY}/task-frontend"
         IMAGE_TAG           = "${BUILD_NUMBER}"
@@ -40,26 +40,15 @@ pipeline {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: '*/main']],
+                    branches: [[name: '*/sayeem-branch']],
                     userRemoteConfigs: [[url: "${GIT_REPO}"]]
                 ])
-
-                sh '''
-                    bash -lc '
-                    set -e
-                    set -o pipefail
-                    echo "===== CHECKOUT STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/checkout.log"
-                    git remote -v | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/checkout.log"
-                    git branch -a | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/checkout.log"
-                    git rev-parse --short HEAD | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/checkout.log"
-                    '
-                '''
             }
         }
 
         stage('Build') {
             parallel {
-                stage('Build Backend') {
+                stage('Backend') {
                     agent {
                         docker {
                             image 'node:20'
@@ -70,19 +59,14 @@ pipeline {
                     steps {
                         dir('backend') {
                             sh '''
-                                bash -lc '
-                                set -e
-                                set -o pipefail
-                                echo "===== BACKEND BUILD STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-build.log"
-                                npm ci 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-build.log"
-                                npm run build --if-present 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-build.log"
-                                '
+                                npm ci
+                                npm run build --if-present
                             '''
                         }
                     }
                 }
 
-                stage('Build Frontend') {
+                stage('Frontend') {
                     agent {
                         docker {
                             image 'node:20'
@@ -93,13 +77,8 @@ pipeline {
                     steps {
                         dir('frontend') {
                             sh '''
-                                bash -lc '
-                                set -e
-                                set -o pipefail
-                                echo "===== FRONTEND BUILD STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
-                                npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
-                                npm run build 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-build.log"
-                                '
+                                npm install
+                                npm run build
                             '''
                         }
                     }
@@ -118,64 +97,9 @@ pipeline {
             steps {
                 dir('backend') {
                     sh '''
-                        bash -lc '
-                        set -e
-                        set -o pipefail
-                        echo "===== BACKEND TEST STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-test.log"
-                        npm ci 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-test.log"
-                        npm test 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-test.log"
-                        '
+                        npm ci
+                        npm test
                     '''
-                }
-            }
-        }
-
-        stage('Code Analysis') {
-            parallel {
-                stage('Backend Analysis') {
-                    agent {
-                        docker {
-                            image 'node:20'
-                            reuseNode true
-                            args '--entrypoint="" -u root:root'
-                        }
-                    }
-                    steps {
-                        dir('backend') {
-                            sh '''
-                                bash -lc '
-                                set -e
-                                set -o pipefail
-                                echo "===== BACKEND CODE ANALYSIS =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-analysis.log"
-                                npm ci 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-analysis.log"
-                                npm run lint --if-present 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/backend-analysis.log"
-                                '
-                            '''
-                        }
-                    }
-                }
-
-                stage('Frontend Analysis') {
-                    agent {
-                        docker {
-                            image 'node:20'
-                            reuseNode true
-                            args '--entrypoint="" -u root:root'
-                        }
-                    }
-                    steps {
-                        dir('frontend') {
-                            sh '''
-                                bash -lc '
-                                set -e
-                                set -o pipefail
-                                echo "===== FRONTEND CODE ANALYSIS =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
-                                npm install 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
-                                npm run lint --if-present 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/frontend-analysis.log"
-                                '
-                            '''
-                        }
-                    }
                 }
             }
         }
@@ -183,17 +107,11 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 sh '''
-                    bash -lc '
-                    set -e
-                    set -o pipefail
-                    echo "===== DOCKER BUILD STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
+                    docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend
+                    docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest
 
-                    docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
-                    docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
-
-                    docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
-                    docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-build.log"
-                    '
+                    docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend
+                    docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
                 '''
             }
         }
@@ -202,64 +120,49 @@ pipeline {
             steps {
                 withDockerRegistry([credentialsId: "${DOCKER_CREDS_ID}", url: '']) {
                     sh '''
-                        bash -lc '
-                        set -e
-                        set -o pipefail
-                        echo "===== DOCKER PUSH STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
+                        docker push ${BACKEND_IMAGE}:${IMAGE_TAG}
+                        docker push ${BACKEND_IMAGE}:latest
 
-                        docker push ${BACKEND_IMAGE}:${IMAGE_TAG} 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
-                        docker push ${BACKEND_IMAGE}:latest 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
-
-                        docker push ${FRONTEND_IMAGE}:${IMAGE_TAG} 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
-                        docker push ${FRONTEND_IMAGE}:latest 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/docker-push.log"
-                        '
+                        docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}
+                        docker push ${FRONTEND_IMAGE}:latest
                     '''
                 }
             }
         }
 
         stage('Check Deploy Files on EC2') {
-            
             steps {
                 sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
                     sh '''
-                        bash -lc '
-                        set -e
-                        set -o pipefail
-                        echo "===== CHECK DEPLOY FILES STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/deploy-check.log"
-
                         ssh -o StrictHostKeyChecking=no ${EC2_HOST} "
-                            test -f ${DEPLOY_DIR}/docker-compose.deploy.yml &&
+                            test -f ${DEPLOY_DIR}/docker-compose.yml &&
                             test -f ${DEPLOY_DIR}/backend/.env
-                        " 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/deploy-check.log"
-                        '
+                        "
                     '''
                 }
             }
         }
 
         stage('Deploy to EC2') {
-            
             steps {
                 sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
                     sh '''
-                        bash -lc '
-                        set -e
-                        set -o pipefail
-                        echo "===== DEPLOY STAGE =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/deploy.log"
-
                         ssh -o StrictHostKeyChecking=no ${EC2_HOST} "
                             set -e
                             cd ${DEPLOY_DIR}
-                            docker compose --env-file backend/.env -f docker-compose.deploy.yml down || true
+
+                            docker compose --env-file backend/.env down || true
+
                             docker pull ${BACKEND_IMAGE}:${IMAGE_TAG}
                             docker pull ${FRONTEND_IMAGE}:${IMAGE_TAG}
+
                             docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest
                             docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
-                            docker compose --env-file backend/.env -f docker-compose.deploy.yml up -d
-                            docker compose --env-file backend/.env -f docker-compose.deploy.yml ps
-                        " 2>&1 | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/deploy.log"
-                        '
+
+                            docker compose --env-file backend/.env up -d
+
+                            docker compose ps
+                        "
                     '''
                 }
             }
