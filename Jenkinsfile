@@ -1,6 +1,5 @@
 // pipeline {
 //     agent any
-
 //     environment {
 //         REGISTRY            = "mathew664"
 //         BACKEND_IMAGE       = "${REGISTRY}/task-backend"
