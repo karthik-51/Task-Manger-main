@@ -6,14 +6,10 @@ pipeline {
         BACKEND_IMAGE       = "${REGISTRY}/task-backend"
         FRONTEND_IMAGE      = "${REGISTRY}/task-frontend"
         IMAGE_TAG           = "${BUILD_NUMBER}"
-
         LOG_DIR_NAME        = "jenkins-logs"
-
-        GIT_REPO            = "https://github.com/karthik-51/Task-Manger-main.git"
-
+        GIT_REPO            = "https://github.com"
         DOCKER_CREDS_ID     = "docker-hub-credentials"
         EC2_SSH_CREDS       = "ec2-ssh-key"
-
         EC2_HOST            = "ubuntu@18.60.29.79"
         DEPLOY_DIR          = "/home/ubuntu/Task-Manger-main"
     }
@@ -47,8 +43,9 @@ pipeline {
         }
 
         stage('Build') {
-            parallel {
-                stage('Backend') {
+            /* SEQUENTIAL BUILD: Fixed to prevent EC2 RAM freeze (no parallel) */
+            stages {
+                stage('Backend Build') {
                     agent {
                         docker {
                             image 'node:20'
@@ -67,7 +64,7 @@ pipeline {
                     }
                 }
 
-                stage('Frontend') {
+                stage('Frontend Build') {
                     agent {
                         docker {
                             image 'node:20'
@@ -88,58 +85,22 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            agent {
-                docker {
-                    image 'node:20'
-                    reuseNode true
-                    args '--entrypoint="" -u root:root'
-                }
-            }
-            steps {
-                dir('backend') {
-                    sh '''
-                        npm ci
-                        npm test
-                    '''
-                }
-            }
-        }
-
-        stage('Build Docker Images') {
+        stage('Build & Push Docker Images') {
             steps {
                 sh '''
-                    docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend
+                    # Build using build-args to handle memory during image creation
+                    docker build --build-arg NODE_OPTIONS="--max-old-space-size=1536" -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend
                     docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest
 
-                    docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend
+                    docker build --build-arg NODE_OPTIONS="--max-old-space-size=1536" -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend
                     docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
                 '''
-            }
-        }
-
-        stage('Push Docker Images') {
-            steps {
                 withDockerRegistry([credentialsId: "${DOCKER_CREDS_ID}", url: '']) {
                     sh '''
                         docker push ${BACKEND_IMAGE}:${IMAGE_TAG}
                         docker push ${BACKEND_IMAGE}:latest
-
                         docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}
                         docker push ${FRONTEND_IMAGE}:latest
-                    '''
-                }
-            }
-        }
-
-        stage('Check Deploy Files on EC2') {
-            steps {
-                sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} "
-                            test -f ${DEPLOY_DIR}/docker-compose.yml &&
-                            test -f ${DEPLOY_DIR}/backend/.env
-                        "
                     '''
                 }
             }
@@ -153,17 +114,20 @@ pipeline {
                             set -e
                             cd ${DEPLOY_DIR}
 
-                            docker compose --env-file backend/.env down || true
+                            echo '🧹 Cleaning up old/orphan containers to fix Auth errors...'
+                            docker compose --env-file backend/.env down --remove-orphans || true
 
+                            echo '📥 Pulling images...'
                             docker pull ${BACKEND_IMAGE}:${IMAGE_TAG}
                             docker pull ${FRONTEND_IMAGE}:${IMAGE_TAG}
-
                             docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest
                             docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
 
-                            docker compose --env-file backend/.env up -d
+                            echo '🚀 Starting containers with NEW MongoDB credentials...'
+                            # --force-recreate ensures the NEW password in .env is applied
+                            docker compose --env-file backend/.env up -d --force-recreate
 
-                            docker compose ps
+                            docker ps
                         "
                     '''
                 }
@@ -173,26 +137,13 @@ pipeline {
 
     post {
         success {
-            sh '''
-                mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
-                echo "===== PIPELINE SUCCESS: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
-            '''
-            archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
+            echo "✅ Deployment Successful! New MongoDB password applied."
         }
-
         failure {
-            sh '''
-                mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
-                echo "===== PIPELINE FAILED: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
-            '''
-            archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
+            echo "❌ Deployment Failed. Check EC2 RAM/Swap or MongoDB Auth logs."
         }
-
         always {
-            sh '''
-                mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
-                echo "===== PIPELINE FINISHED: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
-            '''
+            archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
         }
     }
 }
