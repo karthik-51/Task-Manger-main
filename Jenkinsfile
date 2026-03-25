@@ -121,7 +121,7 @@ pipeline {
                             cd ${DEPLOY_DIR}
 
                             echo "🧹 Cleaning old containers..."
-                            docker compose down --remove-orphans || true
+                            MONGO_URI="${MONGO_URI}" docker compose down --remove-orphans || true
 
                             echo "📥 Pulling new images..."
                             docker pull ${BACKEND_IMAGE}:${IMAGE_TAG}
@@ -130,8 +130,7 @@ pipeline {
                             docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
 
                             echo "🚀 Starting containers with secure MongoDB credentials..."
-                            export MONGO_URI="${MONGO_URI}"
-                            docker compose up -d --force-recreate
+                            MONGO_URI="${MONGO_URI}" docker compose up -d --force-recreate
 
                             docker ps
                         '
