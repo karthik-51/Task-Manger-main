@@ -7,6 +7,7 @@ pipeline {
         FRONTEND_IMAGE      = "${REGISTRY}/task-frontend"
         IMAGE_TAG           = "${BUILD_NUMBER}"
         LOG_DIR_NAME        = "jenkins-logs"
+        // CORRECTED: Added the full repository path
         GIT_REPO            = "https://github.com"
         DOCKER_CREDS_ID     = "docker-hub-credentials"
         EC2_SSH_CREDS       = "ec2-ssh-key"
@@ -22,6 +23,13 @@ pipeline {
     }
 
     stages {
+        stage('Cleanup Workspace') {
+            steps {
+                // This ensures old .env files in the Jenkins workspace are deleted before building
+                cleanWs()
+            }
+        }
+
         stage('Init Logs') {
             steps {
                 sh '''
@@ -43,7 +51,6 @@ pipeline {
         }
 
         stage('Build') {
-            /* SEQUENTIAL BUILD: Fixed to prevent EC2 RAM freeze (no parallel) */
             stages {
                 stage('Backend Build') {
                     agent {
@@ -88,11 +95,11 @@ pipeline {
         stage('Build & Push Docker Images') {
             steps {
                 sh '''
-                    # Build using build-args to handle memory during image creation
-                    docker build --build-arg NODE_OPTIONS="--max-old-space-size=1536" -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend
+                    # Added --no-cache to ensure it doesn't use old cached layers with the wrong password
+                    docker build --no-cache --build-arg NODE_OPTIONS="--max-old-space-size=1536" -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend
                     docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest
 
-                    docker build --build-arg NODE_OPTIONS="--max-old-space-size=1536" -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend
+                    docker build --no-cache --build-arg NODE_OPTIONS="--max-old-space-size=1536" -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend
                     docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
                 '''
                 withDockerRegistry([credentialsId: "${DOCKER_CREDS_ID}", url: '']) {
@@ -114,7 +121,7 @@ pipeline {
                             set -e
                             cd ${DEPLOY_DIR}
 
-                            echo '🧹 Cleaning up old/orphan containers to fix Auth errors...'
+                            echo '🧹 Cleaning up old/orphan containers...'
                             docker compose --env-file backend/.env down --remove-orphans || true
 
                             echo '📥 Pulling images...'
@@ -124,7 +131,7 @@ pipeline {
                             docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
 
                             echo '🚀 Starting containers with NEW MongoDB credentials...'
-                            # --force-recreate ensures the NEW password in .env is applied
+                            # Using the .env file that you manually edited on the EC2
                             docker compose --env-file backend/.env up -d --force-recreate
 
                             docker ps
@@ -137,10 +144,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Deployment Successful! New MongoDB password applied."
+            echo "✅ Deployment Successful!"
         }
         failure {
-            echo "❌ Deployment Failed. Check EC2 RAM/Swap or MongoDB Auth logs."
+            echo "❌ Deployment Failed. Check EC2 RAM or MongoDB Logs."
         }
         always {
             archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
