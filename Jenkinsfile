@@ -2,29 +2,109 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY        = "havmore"
-        BACKEND_IMAGE   = "${REGISTRY}/task-backend"
-        FRONTEND_IMAGE  = "${REGISTRY}/task-frontend"
-        IMAGE_TAG       = "${BUILD_NUMBER}"
+        REGISTRY            = "havmore"
+        BACKEND_IMAGE       = "${REGISTRY}/task-backend"
+        FRONTEND_IMAGE      = "${REGISTRY}/task-frontend"
+        IMAGE_TAG           = "${BUILD_NUMBER}"
 
-        GIT_REPO        = "https://github.com/karthik-51/Task-Manger-main.git"
+        LOG_DIR_NAME        = "jenkins-logs"
 
-        DOCKER_CREDS_ID = "docker-hub-credentials"
-        EC2_SSH_CREDS   = "ec2-ssh-key"
+        GIT_REPO            = "https://github.com/karthik-51/Task-Manger-main.git"
 
-        EC2_HOST        = "ubuntu@18.60.0.90"
-        DEPLOY_DIR      = "/home/ubuntu/Task-Manger-main"
+        DOCKER_CREDS_ID     = "docker-hub-credentials"
+        EC2_SSH_CREDS       = "ec2-ssh-key"
+
+        EC2_HOST            = "ubuntu@18.60.29.79"
+        DEPLOY_DIR          = "/home/ubuntu/Task-Manger-main"
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 30, unit: 'MINUTES')
     }
 
     stages {
-
-        stage('Checkout') {
+        stage('Init Logs') {
             steps {
-                git branch: 'sayeem-branch', url: "${GIT_REPO}"
+                sh '''
+                    mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
+                    rm -f "${WORKSPACE}/${LOG_DIR_NAME}"/*.log
+                    echo "===== PIPELINE STARTED: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+                '''
             }
         }
 
-        // ❌ REMOVED: Build + Test stages (handled by Docker)
+        stage('Checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/sayeem-branch']],
+                    userRemoteConfigs: [[url: "${GIT_REPO}"]]
+                ])
+            }
+        }
+
+        stage('Build') {
+            parallel {
+                stage('Backend') {
+                    agent {
+                        docker {
+                            image 'node:20'
+                            reuseNode true
+                            args '--entrypoint="" -u root:root'
+                        }
+                    }
+                    steps {
+                        dir('backend') {
+                            sh '''
+                                export NODE_OPTIONS="--max-old-space-size=1024"
+                                npm ci
+                                npm run build --if-present
+                            '''
+                        }
+                    }
+                }
+
+                stage('Frontend') {
+                    agent {
+                        docker {
+                            image 'node:20'
+                            reuseNode true
+                            args '--entrypoint="" -u root:root'
+                        }
+                    }
+                    steps {
+                        dir('frontend') {
+                            sh '''
+                                export NODE_OPTIONS="--max-old-space-size=1536"
+                                npm install
+                                npm run build
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Test') {
+            agent {
+                docker {
+                    image 'node:20'
+                    reuseNode true
+                    args '--entrypoint="" -u root:root'
+                }
+            }
+            steps {
+                dir('backend') {
+                    sh '''
+                        npm ci
+                        npm test
+                    '''
+                }
+            }
+        }
 
         stage('Build Docker Images') {
             steps {
@@ -52,6 +132,19 @@ pipeline {
             }
         }
 
+        stage('Check Deploy Files on EC2') {
+            steps {
+                sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} "
+                            test -f ${DEPLOY_DIR}/docker-compose.yml &&
+                            test -f ${DEPLOY_DIR}/backend/.env
+                        "
+                    '''
+                }
+            }
+        }
+
         stage('Deploy to EC2') {
             steps {
                 sshagent(credentials: ["${EC2_SSH_CREDS}"]) {
@@ -60,21 +153,17 @@ pipeline {
                             set -e
                             cd ${DEPLOY_DIR}
 
-                            echo '🧹 Stopping old containers...'
-                            docker compose down --remove-orphans || true
+                            docker compose --env-file backend/.env down || true
 
-                            echo '📥 Pulling latest images...'
                             docker pull ${BACKEND_IMAGE}:${IMAGE_TAG}
                             docker pull ${FRONTEND_IMAGE}:${IMAGE_TAG}
 
                             docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest
                             docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
 
-                            echo '🚀 Starting containers...'
                             docker compose --env-file backend/.env up -d
 
-                            echo '✅ Running containers:'
-                            docker ps
+                            docker compose ps
                         "
                     '''
                 }
@@ -84,10 +173,26 @@ pipeline {
 
     post {
         success {
-            echo "✅ Deployment Successful!"
+            sh '''
+                mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
+                echo "===== PIPELINE SUCCESS: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+            '''
+            archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
         }
+
         failure {
-            echo "❌ Deployment Failed!"
+            sh '''
+                mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
+                echo "===== PIPELINE FAILED: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+            '''
+            archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
+        }
+
+        always {
+            sh '''
+                mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
+                echo "===== PIPELINE FINISHED: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
+            '''
         }
     }
 }
