@@ -59,7 +59,7 @@ pipeline {
                     steps {
                         dir('backend') {
                             sh '''
-				export NODE_OPTIONS="--max-old-space-size=1024"
+                                export NODE_OPTIONS="--max-old-space-size=1024"
                                 npm ci
                                 npm run build --if-present
                             '''
@@ -78,7 +78,7 @@ pipeline {
                     steps {
                         dir('frontend') {
                             sh '''
-				export NODE_OPTIONS="--max-old-space-size=1536"
+                                export NODE_OPTIONS="--max-old-space-size=1536"
                                 npm install
                                 npm run build
                             '''
