@@ -2,23 +2,28 @@ version: "3.8"
 
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: task-backend
     ports:
       - "5000:5000"
-    environment:
-      - MONGO_URI=${MONGO_URI}   # Injected from Jenkins credentials
+    env_file:
+      - ./backend/.env  
     restart: always
     networks:
       - task-network
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: task-frontend
+    depends_on:
+      backend:
+        condition: service_started
     ports:
       - "80:80"
-    depends_on:
-      - backend
     restart: always
     networks:
       - task-network
