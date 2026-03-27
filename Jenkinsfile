@@ -537,6 +537,6 @@ pipeline {
                 echo "===== PIPELINE FINISHED: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
             '''
         }
-    }
+    
 
 }
