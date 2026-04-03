@@ -530,7 +530,7 @@ pipeline {
             '''
             archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
         
-
+        }
         always {
             sh '''
                 mkdir -p "${WORKSPACE}/${LOG_DIR_NAME}"
