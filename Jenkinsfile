@@ -529,7 +529,7 @@ pipeline {
                 echo "===== PIPELINE FAILED: $(date) =====" | tee -a "${WORKSPACE}/${LOG_DIR_NAME}/pipeline.log"
             '''
             archiveArtifacts artifacts: "${LOG_DIR_NAME}/*.log", fingerprint: true, allowEmptyArchive: true
-        }
+        
 
         always {
             sh '''
